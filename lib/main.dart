@@ -39,18 +39,18 @@ class MyApp extends StatelessWidget {
         );
       },
 
-      locale: const Locale('ar', 'DZ'),
-      supportedLocales: const [
-        Locale('ar', 'DZ'),
-        Locale('en', 'US'),
-      ],
-      localizationsDelegates: const [
+localizationsDelegates: [
+        GlobalCupertinoLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: [
+        Locale("ar", "YE"), // OR Locale('ar', 'AE') OR Other RTL locales
       ],
 
-      home: HomeScreen(user: testUser),
+      home: HomeScreen(
+        user: testUser,
+),
     );
   }
 }

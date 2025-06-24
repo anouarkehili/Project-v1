@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../../models/user_model.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../admin/admin_dashboard.dart';
 
 class HomeScreen extends StatelessWidget {
   final UserModel user;
@@ -123,7 +124,12 @@ class HomeScreen extends StatelessWidget {
       {
       'title': 'ملفي الشخصي',
       'icon': Icons.person,
-      'onTap': () {},
+      'onTap': () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AdminDashboard()),
+        );
+      },
       },
       {
       'title': 'مواقع التواصل',
