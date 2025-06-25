@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import '../../models/user_model.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../admin/admin_dashboard.dart';
+import '../../services/attendance_service.dart';
 import '../member/member_profile_screen.dart';
+import 'qr_scanner_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
@@ -16,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  final AttendanceService _attendanceService = AttendanceService();
 
   @override
   Widget build(BuildContext context) {
@@ -46,14 +47,19 @@ class _HomeScreenState extends State<HomeScreen> {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
             BottomNavigationBarItem(icon: Icon(Icons.access_time), label: 'الحضور'),
-            BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'التمارين'),
+            BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label:  'التمارين'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'حسابي'),
           ],
         ),
-        floatingActionButton: _currentIndex == 0 ? FloatingActionButton(
-          onPressed: () => _showQRCode(),
+        floatingActionButton: _currentIndex == 1 ? FloatingActionButton(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => QRScannerScreen(user: widget.user),
+            ),
+          ),
           backgroundColor: const Color(0xFF00FF57),
-          child: const Icon(Icons.qr_code, color: Colors.black),
+          child: const Icon(Icons.qr_code_scanner, color: Colors.black),
         ) : null,
       ),
     );
@@ -77,16 +83,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAttendanceTab() {
-    return AttendanceScreen();
+    return AttendanceScreen(user: widget.user);
   }
 
   Widget _buildWorkoutsTab() {
-    return WorkoutsScreen();
+    return const WorkoutsScreen();
   }
 
   Widget _buildSubscriptionCard(UserModel user) {
-    final daysRemaining = user.subscriptionEnd.difference(DateTime.now()).inDays;
-    final isExpired = daysRemaining < 0;
+    final daysRemaining = user.daysRemaining;
+    final isExpired = !user.isSubscriptionActive;
     
     return Container(
       decoration: BoxDecoration(
@@ -147,11 +153,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'من ${_formatDate(user.subscriptionStart)} إلى ${_formatDate(user.subscriptionEnd)}',
-            style: const TextStyle(fontSize: 14, color: Colors.black87),
-          ),
+          if (user.subscriptionStart != null && user.subscriptionEnd != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'من ${_formatDate(user.subscriptionStart!)} إلى ${_formatDate(user.subscriptionEnd!)}',
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+          ],
         ],
       ),
     );
@@ -160,10 +168,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildFeatureGrid(BuildContext context) {
     final features = [
       {
-        'title': 'الدخول للصالة',
-        'icon': Icons.door_front_door,
+        'title': 'تسجيل الحضور',
+        'icon': Icons.qr_code_scanner,
         'color': Colors.blue,
-        'onTap': () => setState(() => _currentIndex = 1),
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => QRScannerScreen(user: widget.user),
+          ),
+        ),
       },
       {
         'title': 'مكتبة التمارين',
@@ -172,10 +185,10 @@ class _HomeScreenState extends State<HomeScreen> {
         'onTap': () => setState(() => _currentIndex = 2),
       },
       {
-        'title': 'الدعم الفني',
-        'icon': Icons.support_agent,
+        'title': 'سجل الحضور',
+        'icon': Icons.access_time,
         'color': Colors.green,
-        'onTap': () => _showSupportDialog(),
+        'onTap': () => setState(() => _currentIndex = 1),
       },
       {
         'title': 'ملفي الشخصي',
@@ -184,15 +197,15 @@ class _HomeScreenState extends State<HomeScreen> {
         'onTap': () => setState(() => _currentIndex = 3),
       },
       {
-        'title': 'مواقع التواصل',
-        'icon': Icons.share,
-        'color': Colors.pink,
-        'onTap': () => _showSocialMediaDialog(),
+        'title': 'الدعم الفني',
+        'icon': Icons.support_agent,
+        'color': Colors.teal,
+        'onTap': () => _showSupportDialog(),
       },
       {
         'title': 'حول التطبيق',
         'icon': Icons.info_outline,
-        'color': Colors.teal,
+        'color': Colors.pink,
         'onTap': () => _showAboutDialog(),
       },
     ];
@@ -249,45 +262,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showQRCode() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E),
-        title: const Text('QR الخاص بك', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(
-                child: Icon(Icons.qr_code, size: 150, color: Colors.black),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'اعرض هذا الرمز للموظف عند الدخول',
-              style: TextStyle(color: Colors.white70),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00FF57)),
-            child: const Text('إغلاق', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showSupportDialog() {
     showDialog(
       context: context,
@@ -332,55 +306,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showSocialMediaDialog() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF2C2C2E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'تابعنا على مواقع التواصل',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildSocialButton(FontAwesomeIcons.facebook, const Color(0xFF1877F3), () {}),
-                _buildSocialButton(FontAwesomeIcons.tiktok, Colors.black, () {}),
-                _buildSocialButton(FontAwesomeIcons.instagram, const Color(0xFFE4405F), () {}),
-                _buildSocialButton(FontAwesomeIcons.whatsapp, const Color(0xFF25D366), () {
-                  launchUrl(Uri.parse("https://wa.me/213699446868"));
-                }),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton(IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Icon(icon, color: color, size: 32),
-      ),
-    );
-  }
-
   void _showAboutDialog() {
     showModalBottomSheet(
       context: context,
@@ -396,9 +321,9 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
+              const Center(
                 child: Column(
-                  children: const [
+                  children: [
                     Icon(Icons.fitness_center, color: Color(0xFF00FF57), size: 40),
                     SizedBox(height: 8),
                     Text(
@@ -427,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                '✅ تسجيل الدخول وتتبع الحضور.\n✅ الوصول إلى مكتبة التمارين.\n✅ دعم فني مباشر.',
+                '✅ تسجيل الحضور عبر QR Code.\n✅ الوصول إلى مكتبة التمارين.\n✅ متابعة حالة الاشتراك.\n✅ دعم فني مباشر.',
                 style: TextStyle(color: Colors.white70, fontSize: 15),
               ),
               const SizedBox(height: 24),
@@ -491,183 +416,172 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// صفحة سجل الحضور وتسجيل الدخول
+// صفحة سجل الحضور
 class AttendanceScreen extends StatelessWidget {
-  const AttendanceScreen({super.key});
+  final UserModel user;
+  
+  const AttendanceScreen({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
-    // بيانات سجل الحضور التجريبية مع الوقت
-    final attendanceList = [
-      {'date': '2024/06/01', 'time': '08:30', 'status': 'present'},
-      {'date': '2024/05/31', 'time': '09:10', 'status': 'present'},
-      {'date': '2024/05/30', 'time': '—', 'status': 'absent'},
-    ];
-
-    Icon _statusIcon(String status) {
-      if (status == 'present') {
-        return const Icon(Icons.check_circle, color: Color(0xFF00FF57), size: 28);
-      } else {
-        return const Icon(Icons.cancel, color: Colors.redAccent, size: 28);
-      }
-    }
-
-    String _statusText(String status) {
-      return status == 'present' ? 'حضر' : 'غائب';
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('سجل الحضور', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
+        automaticallyImplyLeading: false,
       ),
       backgroundColor: const Color(0xFF1C1C1E),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // TODO: قراءة QR
-                    },
-                    icon: const Icon(Icons.qr_code_scanner, color: Colors.black),
-                    label: const Text('قراءة QR', style: TextStyle(color: Colors.black)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00FF57),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // TODO: عرض QR الخاص بالمستخدم
-                    },
-                    icon: const Icon(Icons.qr_code, color: Colors.black),
-                    label: const Text('عرض QR', style: TextStyle(color: Colors.black)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00FF57),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            _buildTodayStatus(),
             const SizedBox(height: 20),
             const Align(
               alignment: Alignment.centerRight,
               child: Text(
-                'سجل الأيام:',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                'سجل الأيام:',
+                'سجل الحضور:',
                 style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 10),
-            Expanded(
-              child: ListView.builder(
-                itemCount: attendanceList.length,
-                itemBuilder: (context, index) {
-                  final item = attendanceList[index];
-                  return Card(
-                    color: const Color(0xFF2C2C2E),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      leading: _statusIcon(item['status']!),
-                      title: Text(
-                        item['date']!,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Row(
-                        children: [
-                          const Icon(Icons.access_time, color: Colors.white54, size: 18),
-                          const SizedBox(width: 4),
-                          Text(
-                            item['time']!,
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                        ],
-                      ),
-                      trailing: Text(
-                        _statusText(item['status']!),
-                        style: TextStyle(
-                          color: item['status'] == 'present' ? const Color(0xFF00FF57) : Colors.redAccent,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+            Expanded(child: _buildAttendanceList()),
           ],
         ),
       ),
     );
   }
 
-  Icon _statusIcon(String status) {
-    if (status == 'present') {
-      return const Icon(Icons.check_circle, color: Color(0xFF00FF57), size: 28);
-    } else {
-      return const Icon(Icons.cancel, color: Colors.redAccent, size: 28);
-    }
-  }
-
-  String _statusText(String status) {
-    return status == 'present' ? 'حضر' : 'غائب';
-  }
-
-  void _showQRCode(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E),
-        title: const Text('QR الخاص بك', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(
-                child: Icon(Icons.qr_code, size: 150, color: Colors.black),
-              ),
+  Widget _buildTodayStatus() {
+    return FutureBuilder<bool>(
+      future: AttendanceService().hasAttendedToday(user.uid),
+      builder: (context, snapshot) {
+        bool hasAttended = snapshot.data ?? false;
+        
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: hasAttended 
+                ? Colors.green.withOpacity(0.2)
+                : Colors.orange.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasAttended ? Colors.green : Colors.orange,
+              width: 1,
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'اعرض هذا الرمز للموظف عند الدخول',
-              style: TextStyle(color: Colors.white70),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00FF57)),
-            child: const Text('إغلاق', style: TextStyle(color: Colors.black)),
           ),
-        ],
-      ),
+          child: Row(
+            children: [
+              Icon(
+                hasAttended ? Icons.check_circle : Icons.pending,
+                color: hasAttended ? Colors.green : Colors.orange,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  hasAttended 
+                      ? 'تم تسجيل حضورك اليوم'
+                      : 'لم يتم تسجيل حضورك اليوم بعد',
+                  style: TextStyle(
+                    color: hasAttended ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (!hasAttended)
+                ElevatedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => QRScannerScreen(user: user),
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00FF57),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'تسجيل الحضور',
+                    style: TextStyle(color: Colors.black),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
+  }
+
+  Widget _buildAttendanceList() {
+    return StreamBuilder(
+      stream: AttendanceService().getUserAttendance(user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF00FF57)),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(
+            child: Text(
+              'لا يوجد سجل حضور',
+              style: TextStyle(color: Colors.white70),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.length,
+          itemBuilder: (context, index) {
+            final attendance = snapshot.data![index];
+            return Card(
+              color: const Color(0xFF2C2C2E),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              child: ListTile(
+                leading: const Icon(Icons.check_circle, color: Color(0xFF00FF57), size: 28),
+                title: Text(
+                  _formatDate(attendance.date),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                subtitle: Row(
+                  children: [
+                    const Icon(Icons.access_time, color: Colors.white54, size: 18),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatTime(attendance.checkInTime),
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+                trailing: const Text(
+                  'حضر',
+                  style: TextStyle(
+                    color: Color(0xFF00FF57),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _formatTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }
 
