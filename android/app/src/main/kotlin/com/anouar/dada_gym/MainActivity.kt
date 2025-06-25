@@ -1,4 +1,4 @@
-package com.example.dada_gym_app
+package com.anouar.dada_gym
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="dada_gym_app"
-        android:name="${applicationName}"
+        android:label="dada_gym"
+        android:name="${GYM DADA}"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

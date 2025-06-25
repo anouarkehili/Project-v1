@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../models/admin_model.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
-  const AdminSettingsScreen({super.key});
+  final AdminModel admin;
+  
+  const AdminSettingsScreen({super.key, required this.admin});
 
   @override
   State<AdminSettingsScreen> createState() => _AdminSettingsScreenState();
@@ -27,6 +30,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            _buildAdminProfile(),
+            const SizedBox(height: 20),
             _buildSection('إعدادات عامة', [
               _buildSwitchTile(
                 'تفعيل الإشعارات',
@@ -59,14 +64,15 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 Icons.access_time,
                 () => _showWorkingHoursDialog(),
               ),
-              _buildActionTile(
-                'إدارة المدربين',
-                'إضافة وإدارة حسابات المدربين',
-                Icons.fitness_center,
-                () {
-                  // TODO: صفحة إدارة المدربين
-                },
-              ),
+              if (widget.admin.role == 'super_admin')
+                _buildActionTile(
+                  'إدارة المدربين',
+                  'إضافة وإدارة حسابات المدربين',
+                  Icons.fitness_center,
+                  () {
+                    // TODO: صفحة إدارة المدربين
+                  },
+                ),
             ]),
             
             const SizedBox(height: 20),
@@ -99,8 +105,84 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
               _buildInfoTile('آخر تحديث', '2025/01/15'),
               _buildInfoTile('المطور', 'ANOUAR KEHILI'),
             ]),
+
+            const SizedBox(height: 20),
+
+            // زر تسجيل الخروج
+            Container(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showLogoutDialog(),
+                icon: const Icon(Icons.logout, color: Colors.white),
+                label: const Text('تسجيل الخروج', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAdminProfile() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C2C2E),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: const Color(0xFF00FF57),
+            child: Text(
+              widget.admin.firstName[0] + widget.admin.lastName[0],
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            widget.admin.fullName,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            widget.admin.roleDisplayName,
+            style: const TextStyle(
+              color: Color(0xFF00FF57),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.admin.email,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          Text(
+            widget.admin.phone,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -152,6 +234,31 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     return ListTile(
       title: Text(title, style: const TextStyle(color: Colors.white)),
       trailing: Text(value, style: const TextStyle(color: Colors.white70)),
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('تسجيل الخروج', style: TextStyle(color: Colors.white)),
+        content: const Text('هل أنت متأكد من تسجيل الخروج؟', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('تسجيل الخروج', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 

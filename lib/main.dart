@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'screens/auth/splash_screen.dart';
+import 'screens/auth/login.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-import 'screens/home/home_screen.dart';
-import 'models/user_model.dart';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform, 
+  );
+
   runApp(const MyApp());
 }
 
@@ -13,22 +21,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final testUser = UserModel(
-      firstName: 'أنور',
-      lastName: 'كحيلي',
-      email: 'anouar@example.com',
-      phone: '0555123456',
-      isActivated: true,
-      subscriptionStart: DateTime(2025, 6, 1),
-      subscriptionEnd: DateTime(2025, 7, 1),
-    );
-
     return MaterialApp(
       title: 'DADA GYM',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
         fontFamily: 'Arial',
+        scaffoldBackgroundColor: const Color(0xFF1C1C1E),
       ),
 
       // 🔁 تفعيل RTL تلقائيًا
@@ -39,18 +38,20 @@ class MyApp extends StatelessWidget {
         );
       },
 
-localizationsDelegates: [
+      localizationsDelegates: [
         GlobalCupertinoLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
       supportedLocales: [
-        Locale("ar", "YE"), // OR Locale('ar', 'AE') OR Other RTL locales
+        Locale("ar", "DZ"), 
       ],
 
-      home: HomeScreen(
-        user: testUser,
-),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => const LoginScreen(),
+      },
     );
   }
 }

@@ -4,51 +4,44 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../../models/user_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../admin/admin_dashboard.dart';
+import '../member/member_profile_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final UserModel user;
   const HomeScreen({super.key, required this.user});
 
   @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E),
-      appBar: AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      title: null,
-      ),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
+        backgroundColor: const Color(0xFF1C1C1E),
+        body: IndexedStack(
+          index: _currentIndex,
           children: [
-            _buildSubscriptionCard(user),
-            const SizedBox(height: 20),
-            const Text(
-              'القائمة الرئيسية',
-              style: TextStyle(fontSize: 20, color: Colors.white),
-            ),
-            const SizedBox(height: 10),
-            _buildFeatureGrid(context),
+            _buildHomeTab(),
+            _buildAttendanceTab(),
+            _buildWorkoutsTab(),
+            MemberProfileScreen(user: widget.user),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            // TODO: عرض QR الخاص بالمشترك
-          },
-          backgroundColor: const Color(0xFF00FF57),
-          child: const Icon(Icons.qr_code, color: Colors.black),
-        ),
         bottomNavigationBar: BottomNavigationBar(
-          backgroundColor: Colors.grey[900],
+          backgroundColor: const Color(0xFF2C2C2E),
           selectedItemColor: const Color(0xFF00FF57),
           unselectedItemColor: Colors.white60,
-          currentIndex: 0,
+          currentIndex: _currentIndex,
+          type: BottomNavigationBarType.fixed,
           onTap: (index) {
-            // TODO: الانتقال بين الصفحات
+            setState(() {
+              _currentIndex = index;
+            });
           },
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
@@ -57,42 +50,107 @@ class HomeScreen extends StatelessWidget {
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'حسابي'),
           ],
         ),
+        floatingActionButton: _currentIndex == 0 ? FloatingActionButton(
+          onPressed: () => _showQRCode(),
+          backgroundColor: const Color(0xFF00FF57),
+          child: const Icon(Icons.qr_code, color: Colors.black),
+        ) : null,
       ),
     );
   }
 
+  Widget _buildHomeTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SizedBox(height: 40),
+        _buildSubscriptionCard(widget.user),
+        const SizedBox(height: 20),
+        const Text(
+          'القائمة الرئيسية',
+          style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        _buildFeatureGrid(context),
+      ],
+    );
+  }
+
+  Widget _buildAttendanceTab() {
+    return AttendanceScreen();
+  }
+
+  Widget _buildWorkoutsTab() {
+    return WorkoutsScreen();
+  }
+
   Widget _buildSubscriptionCard(UserModel user) {
+    final daysRemaining = user.subscriptionEnd.difference(DateTime.now()).inDays;
+    final isExpired = daysRemaining < 0;
+    
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF00FF57),
+        gradient: LinearGradient(
+          colors: isExpired 
+              ? [Colors.red.shade400, Colors.red.shade600]
+              : [const Color(0xFF00FF57), const Color(0xFF00CC45)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'مرحبًا، ${user.firstName}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.black.withOpacity(0.2),
+                child: Text(
+                  user.firstName[0],
+                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'مرحبًا، ${user.firstName}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                    Text(
+                      isExpired ? 'انتهت صلاحية الاشتراك' : 'عضو نشط',
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           const Text(
             'حالة الاشتراك',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                user.isActivated ? '✅ مفعل' : '⛔ غير مفعل',
-                style: const TextStyle(fontSize: 16),
-              ),
-              Text(
-                'من ${_formatDate(user.subscriptionStart)} إلى ${_formatDate(user.subscriptionEnd)}',
-                style: const TextStyle(fontSize: 16),
+                isExpired 
+                    ? '❌ منتهي الصلاحية'
+                    : '✅ نشط ($daysRemaining يوم متبقي)',
+                style: const TextStyle(fontSize: 16, color: Colors.black),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'من ${_formatDate(user.subscriptionStart)} إلى ${_formatDate(user.subscriptionEnd)}',
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
           ),
         ],
       ),
@@ -102,97 +160,228 @@ class HomeScreen extends StatelessWidget {
   Widget _buildFeatureGrid(BuildContext context) {
     final features = [
       {
-      'title': 'الدخول للصالة',
-      'icon': Icons.door_front_door,
-      'onTap': () {
-        Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => AttendanceScreen()),
-        );
-      }
+        'title': 'الدخول للصالة',
+        'icon': Icons.door_front_door,
+        'color': Colors.blue,
+        'onTap': () => setState(() => _currentIndex = 1),
       },
       {
-      'title': 'مكتبة التمارين',
-      'icon': Icons.fitness_center,
-      'onTap': () {},
+        'title': 'مكتبة التمارين',
+        'icon': Icons.fitness_center,
+        'color': Colors.orange,
+        'onTap': () => setState(() => _currentIndex = 2),
       },
       {
-      'title': 'الدعم الفني',
-      'icon': Icons.support_agent,
-      'onTap': () {},
+        'title': 'الدعم الفني',
+        'icon': Icons.support_agent,
+        'color': Colors.green,
+        'onTap': () => _showSupportDialog(),
       },
       {
-      'title': 'ملفي الشخصي',
-      'icon': Icons.person,
-      'onTap': () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => AdminDashboard()),
-        );
-      },
+        'title': 'ملفي الشخصي',
+        'icon': Icons.person,
+        'color': Colors.purple,
+        'onTap': () => setState(() => _currentIndex = 3),
       },
       {
-      'title': 'مواقع التواصل',
-      'icon': Icons.share,
-      'onTap': () {
-        showModalBottomSheet(
-          context: context,
-          backgroundColor: const Color(0xFF2C2C2E),
-          shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        'title': 'مواقع التواصل',
+        'icon': Icons.share,
+        'color': Colors.pink,
+        'onTap': () => _showSocialMediaDialog(),
+      },
+      {
+        'title': 'حول التطبيق',
+        'icon': Icons.info_outline,
+        'color': Colors.teal,
+        'onTap': () => _showAboutDialog(),
+      },
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: features.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.1,
+      ),
+      itemBuilder: (context, index) {
+        final feature = features[index];
+        return GestureDetector(
+          onTap: feature['onTap'] as VoidCallback,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF2C2C2E),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: (feature['color'] as Color).withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (feature['color'] as Color).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    feature['icon'] as IconData,
+                    color: feature['color'] as Color,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  feature['title'] as String,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
-          builder: (_) => Padding(
+        );
+      },
+    );
+  }
+
+  void _showQRCode() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('QR الخاص بك', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Icon(Icons.qr_code, size: 150, color: Colors.black),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'اعرض هذا الرمز للموظف عند الدخول',
+              style: TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00FF57)),
+            child: const Text('إغلاق', style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSupportDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('الدعم الفني', style: TextStyle(color: Colors.white)),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'كيف يمكننا مساعدتك؟',
+              style: TextStyle(color: Colors.white70),
+            ),
+            SizedBox(height: 16),
+            ListTile(
+              leading: Icon(Icons.phone, color: Color(0xFF00FF57)),
+              title: Text('اتصل بنا', style: TextStyle(color: Colors.white)),
+              subtitle: Text('0699446868', style: TextStyle(color: Colors.white70)),
+            ),
+            ListTile(
+              leading: Icon(Icons.email, color: Color(0xFF00FF57)),
+              title: Text('راسلنا', style: TextStyle(color: Colors.white)),
+              subtitle: Text('support@dadagym.com', style: TextStyle(color: Colors.white70)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إغلاق', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              launchUrl(Uri.parse("https://wa.me/213699446868"));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00FF57)),
+            child: const Text('واتساب', style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSocialMediaDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF2C2C2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('تابعنا على مواقع التواصل', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'تابعنا على مواقع التواصل',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              icon: const Icon(FontAwesomeIcons.facebook, color: Color(0xFF00FF57), size: 32),
-              onPressed: () {
-            // ضع هنا رابط الفايسبوك الخاص بك
-            // مثال:
-            // launchUrl(Uri.parse('https://facebook.com/yourpage'));
-              },
-            ),
-            IconButton(
-              icon: const Icon(FontAwesomeIcons.tiktok, color: Color(0xFF00FF57), size: 32), // تيك توك
-              onPressed: () {
-            // ضع هنا رابط التيك توك الخاص بك
-            // launchUrl(Uri.parse('https://tiktok.com/@yourusername'));
-              },
-            ),
-            IconButton(
-              icon: const Icon(FontAwesomeIcons.instagram, color: Color(0xFF00FF57), size: 32), // انستغرام
-              onPressed: () {
-            // ضع هنا رابط الانستغرام الخاص بك
-            // launchUrl(Uri.parse('https://instagram.com/yourusername'));
-              },
-            ),
-            IconButton(
-              icon: const Icon(FontAwesomeIcons.whatsapp, color: Color(0xFF00FF57), size: 32),
-              onPressed: () {
-            // ضع هنا رابط الواتساب الخاص بك
-            // launchUrl(Uri.parse('https://wa.me/213XXXXXXXXX'));
-              },
-            ),
-          ],
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildSocialButton(FontAwesomeIcons.facebook, const Color(0xFF1877F3), () {}),
+                _buildSocialButton(FontAwesomeIcons.tiktok, Colors.black, () {}),
+                _buildSocialButton(FontAwesomeIcons.instagram, const Color(0xFFE4405F), () {}),
+                _buildSocialButton(FontAwesomeIcons.whatsapp, const Color(0xFF25D366), () {
+                  launchUrl(Uri.parse("https://wa.me/213699446868"));
+                }),
+              ],
             ),
           ],
         ),
-          ),
-        );
-      },
-      },
-      
-{
-  'title': 'حول التطبيق',
-  'icon': Icons.info_outline,
-  'onTap': () {
+      ),
+    );
+  }
+
+  Widget _buildSocialButton(IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Icon(icon, color: color, size: 32),
+      ),
+    );
+  }
+
+  void _showAboutDialog() {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1C1C1E),
@@ -251,29 +440,29 @@ class HomeScreen extends StatelessWidget {
                 style: TextStyle(color: Color(0xFF00FF57), fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-                Center(
+              Center(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                  launchUrl(Uri.parse("https://wa.me/213699446868"));
+                    launchUrl(Uri.parse("https://wa.me/213699446868"));
                   },
                   icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 20),
                   label: const Text(
-                  'التواصل مع المطور عبر واتساب',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                    'التواصل مع المطور عبر واتساب',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF25D366),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                ),
+              ),
               const SizedBox(height: 16),
               Center(
                 child: ElevatedButton.icon(
@@ -294,49 +483,6 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
-  },
-},
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: features.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.1,
-      ),
-      itemBuilder: (context, index) {
-        final feature = features[index];
-        return GestureDetector(
-          onTap: feature['onTap'] as VoidCallback,
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF2C2C2E),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  feature['icon'] as IconData,
-                  color: const Color(0xFF00FF57),
-                  size: 30,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  feature['title'] as String,
-                  style: const TextStyle(color: Colors.white),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -421,6 +567,14 @@ class AttendanceScreen extends StatelessWidget {
                 style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
+            const SizedBox(height: 20),
+            const Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'سجل الأيام:',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
             const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
@@ -461,6 +615,281 @@ class AttendanceScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Icon _statusIcon(String status) {
+    if (status == 'present') {
+      return const Icon(Icons.check_circle, color: Color(0xFF00FF57), size: 28);
+    } else {
+      return const Icon(Icons.cancel, color: Colors.redAccent, size: 28);
+    }
+  }
+
+  String _statusText(String status) {
+    return status == 'present' ? 'حضر' : 'غائب';
+  }
+
+  void _showQRCode(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('QR الخاص بك', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Icon(Icons.qr_code, size: 150, color: Colors.black),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'اعرض هذا الرمز للموظف عند الدخول',
+              style: TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00FF57)),
+            child: const Text('إغلاق', style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// صفحة التمارين
+class WorkoutsScreen extends StatelessWidget {
+  const WorkoutsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final workoutCategories = [
+      {
+        'title': 'تمارين الصدر',
+        'icon': Icons.fitness_center,
+        'color': Colors.red,
+        'exercises': ['ضغط البنش', 'ضغط مائل', 'فتح دمبل', 'ديبس'],
+      },
+      {
+        'title': 'تمارين الظهر',
+        'icon': Icons.accessibility_new,
+        'color': Colors.blue,
+        'exercises': ['سحب علوي', 'سحب أرضي', 'ديد ليفت', 'شراع'],
+      },
+      {
+        'title': 'تمارين الأرجل',
+        'icon': Icons.directions_run,
+        'color': Colors.green,
+        'exercises': ['سكوات', 'لانجز', 'ليج بريس', 'كالف'],
+      },
+      {
+        'title': 'تمارين الكتف',
+        'icon': Icons.sports_gymnastics,
+        'color': Colors.orange,
+        'exercises': ['ضغط كتف', 'رفرفة جانبي', 'رفرفة خلفي', 'شراج'],
+      },
+      {
+        'title': 'تمارين البطن',
+        'icon': Icons.self_improvement,
+        'color': Colors.purple,
+        'exercises': ['كرانش', 'بلانك', 'رفع أرجل', 'روسيان تويست'],
+      },
+      {
+        'title': 'تمارين الذراع',
+        'icon': Icons.sports_handball,
+        'color': Colors.teal,
+        'exercises': ['بايسبس كيرل', 'ترايسبس', 'هامر كيرل', 'ديبس'],
+      },
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF1C1C1E),
+      appBar: AppBar(
+        title: const Text('مكتبة التمارين', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'اختر مجموعة التمارين:',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: GridView.builder(
+                itemCount: workoutCategories.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.1,
+                ),
+                itemBuilder: (context, index) {
+                  final category = workoutCategories[index];
+                  return GestureDetector(
+                    onTap: () => _showExercises(context, category),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C2C2E),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: (category['color'] as Color).withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: (category['color'] as Color).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              category['icon'] as IconData,
+                              color: category['color'] as Color,
+                              size: 30,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            category['title'] as String,
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${(category['exercises'] as List).length} تمارين',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showExercises(BuildContext context, Map<String, dynamic> category) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF2C2C2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (category['color'] as Color).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    category['icon'] as IconData,
+                    color: category['color'] as Color,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  category['title'] as String,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...((category['exercises'] as List<String>).map((exercise) => 
+              ListTile(
+                leading: const Icon(Icons.play_circle_outline, color: Color(0xFF00FF57)),
+                title: Text(exercise, style: const TextStyle(color: Colors.white)),
+                trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showExerciseDetails(context, exercise);
+                },
+              ),
+            )).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showExerciseDetails(BuildContext context, String exercise) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: Text(exercise, style: const TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 200,
+              height: 120,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C1E),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Icon(Icons.play_circle_outline, size: 60, color: Color(0xFF00FF57)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'شرح التمرين وطريقة الأداء الصحيحة',
+              style: TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '• 3 مجموعات\n• 12-15 تكرار\n• راحة 60 ثانية',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إغلاق', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00FF57)),
+            child: const Text('بدء التمرين', style: TextStyle(color: Colors.black)),
+          ),
+        ],
       ),
     );
   }

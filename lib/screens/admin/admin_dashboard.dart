@@ -5,9 +5,12 @@ import 'attendance_screen.dart';
 import 'statistics_screen.dart';
 import 'admin_settings_screen.dart';
 import 'support_messages_screen.dart';
+import '../../models/admin_model.dart';
 
 class AdminDashboard extends StatelessWidget {
-  const AdminDashboard({super.key});
+  final AdminModel admin;
+  
+  const AdminDashboard({super.key, required this.admin});
 
   @override
   Widget build(BuildContext context) {
@@ -18,16 +21,48 @@ class AdminDashboard extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text(
-            'لوحة تحكم الإدارة',
-            style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'لوحة تحكم الإدارة',
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'مرحباً ${admin.firstName}',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.notifications, color: Color(0xFF00FF57)),
-              onPressed: () {
-                // TODO: عرض الإشعارات
-              },
+            Container(
+              margin: const EdgeInsets.only(left: 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00FF57).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      admin.roleDisplayName,
+                      style: const TextStyle(
+                        color: Color(0xFF00FF57),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.notifications, color: Color(0xFF00FF57)),
+                    onPressed: () {
+                      // TODO: عرض الإشعارات
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -47,7 +82,7 @@ class AdminDashboard extends StatelessWidget {
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
-          backgroundColor: Colors.grey[900],
+          backgroundColor: const Color(0xFF2C2C2E),
           selectedItemColor: const Color(0xFF00FF57),
           unselectedItemColor: Colors.white60,
           currentIndex: 0,
@@ -71,7 +106,7 @@ class AdminDashboard extends StatelessWidget {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const StatisticsScreen()));
                 break;
               case 4:
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminSettingsScreen()));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => AdminSettingsScreen(admin: admin)));
                 break;
             }
           },
@@ -96,15 +131,33 @@ class AdminDashboard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.admin_panel_settings, size: 30, color: Colors.black),
-              const SizedBox(width: 10),
-              const Text(
-                'مرحباً بك في لوحة الإدارة',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.admin_panel_settings, size: 30, color: Colors.black),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'مرحباً ${admin.fullName}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                    Text(
+                      admin.roleDisplayName,
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 15),
           const Text(
             'إدارة شاملة لصالة DADA GYM',
             style: TextStyle(fontSize: 16, color: Colors.black87),
@@ -205,7 +258,7 @@ class AdminDashboard extends StatelessWidget {
         'title': 'الإعدادات',
         'icon': Icons.settings,
         'color': Colors.grey,
-        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminSettingsScreen())),
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminSettingsScreen(admin: admin))),
       },
       {
         'title': 'التقارير',
